@@ -160,9 +160,14 @@ class AllowlistTests(unittest.TestCase):
                      ("POST", "/admin/akun-petugas/12/nonaktifkan")]:
             self.assertTrue(is_mutation_allowed_when_restricted(m, p), p)
 
+    def test_admin_survei_account_sync_allowed(self):
+        # Administrasi akun Admin Survei tidak bergantung pada lisensi modul SURVEI_GPS.
+        self.assertTrue(is_mutation_allowed_when_restricted("POST", "/api/integrasi/simpati/admin-survei"))
+        self.assertTrue(is_mutation_allowed_when_restricted("POST", "/api/integrasi/simpati/admin-survei/"))
+
     def test_data_mutations_blocked(self):
         for m, p in [("POST", "/surveys"), ("POST", "/surveys/9/media"), ("DELETE", "/admin/surveys/3"),
-                     ("POST", "/api/integrasi/simpati/anggota"), ("POST", "/api/integrasi/simpati/admin-survei"),
+                     ("POST", "/api/integrasi/simpati/anggota"), ("POST", "/api/integrasi/simpati/admin-survei/x"),
                      ("POST", "/dps/surveys/1/verification"), ("POST", "/surveys/../auth/login/x")]:
             self.assertFalse(is_mutation_allowed_when_restricted(m, p), p)
 

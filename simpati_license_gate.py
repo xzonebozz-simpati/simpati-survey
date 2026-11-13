@@ -37,7 +37,9 @@ logger = logging.getLogger("simpati_license_gate")
 ALLOWED_EXACT = {
     "/auth/login", "/auth/logout",
     "/dps/login", "/dps/logout", "/dpc/login", "/dpd/login", "/dpc/logout", "/dpd/logout",
-    "/superuser/logout", "/admin/login", "/admin/logout", "/admin-survei/login", "/admin-survei/logout", "/admin-survei/password",
+    "/superuser/logout", "/admin-survei/login", "/admin-survei/logout", "/admin-survei/password",
+    # Administrasi akun Admin Survei oleh Superadmin SIMPATI 555 tidak bergantung pada lisensi modul.
+    "/api/integrasi/simpati/admin-survei",
 }
 ALLOWED_PATTERNS = [
     re.compile(r"^/api/integrasi/simpati/anggota/[^/]+/nonaktifkan$"),
