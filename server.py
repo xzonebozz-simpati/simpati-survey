@@ -203,6 +203,14 @@ def _superuser_identity(username: str) -> dict:
     }
 
 
+def _wants_html_login_redirect(request: Request) -> None:
+    """Navigasi browser (GET, Accept text/html) tanpa sesi diarahkan ke halaman login, bukan prompt Basic."""
+    if request.method == "GET" and "text/html" in request.headers.get("accept", "").lower():
+        from urllib.parse import quote as _q
+        path = request.url.path + (("?" + request.url.query) if request.url.query else "")
+        raise HTTPException(status_code=303, headers={"Location": "/admin/login?next=" + _q(path, safe="/")})
+
+
 def verify_superuser(
     request: Request,
     sidps_session: str | None = Cookie(default=None),
@@ -212,6 +220,8 @@ def verify_superuser(
     if session_username:
         _record_superuser_activity(session_username, request, "OPEN_SUPERUSER_DASHBOARD")
         return session_username
+    if credentials is None:
+        _wants_html_login_redirect(request)
     if not _superuser_credentials_match(credentials):
         raise HTTPException(
             status_code=401,
@@ -235,6 +245,7 @@ def verify_admin(
         _record_superuser_activity(credentials.username, request, "ADMIN_ACCESS")
         return credentials.username
     if credentials is None:
+        _wants_html_login_redirect(request)
         raise HTTPException(status_code=401, detail="Silakan login sebagai admin atau SUPERUSER.", headers={"WWW-Authenticate": "Basic"})
     admin_username = os.environ.get("ADMIN_USERNAME", "")
     admin_password = os.environ.get("ADMIN_PASSWORD", "")
@@ -264,6 +275,32 @@ def verify_admin(
 
     return credentials.username
 
+
+
+# =========================================================
+# LOGIN ADMIN (akun Superadmin SIMPATI 555) & INFORMASI LISENSI
+# =========================================================
+# Verifikasi kredensial dilakukan ke SIMPATI 555; sesi yang terbit adalah sesi SUPERUSER yang sudah ada.
+from simpati_admin import SimpatiAdminClient
+from simpati_admin_routes import build_router as _build_admin_router
+
+_simpati_admin_client = SimpatiAdminClient(SIMPATI_API_URL, SIMPATI_INTEGRATION_TOKEN)
+
+
+def _revoke_superuser_session(token: str) -> None:
+    with get_db() as connection:
+        connection.execute("DELETE FROM superuser_sessions WHERE token_hash=%s", (_token_hash(token),))
+
+
+app.include_router(_build_admin_router(
+    client=_simpati_admin_client,
+    issue_session=_issue_superuser_session,
+    session_username=_superuser_session_username,
+    revoke_session=_revoke_superuser_session,
+    record_activity=_record_superuser_activity,
+    gate_evaluate=lambda: _license_gate.evaluate(),
+    simpati_url=SIMPATI_API_URL,
+))
 
 
 # Tema global Theme 2 untuk seluruh halaman HTML, termasuk halaman submenu.
@@ -3189,6 +3226,7 @@ def superuser_dashboard(
         ("Cakupan Wilayah Petugas", "/admin/cakupan-wilayah", "Pengesahan cakupan akses petugas"),
         ("Master Data Wilayah", "/admin/master-data-wilayah", "Pengelolaan referensi wilayah"),
         ("Data Personel", "/admin/data-personel", "Data personel dan status akses"),
+        ("Informasi Lisensi", "/superuser/lisensi", "Status lisensi, modul aktif, kapasitas, dan masa berlaku"),
         ("Audit Aktivitas SUPERUSER", "/superuser/audit", "Riwayat akses dan aktivitas akun global"),
     ]
     cards = "".join(

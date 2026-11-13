@@ -5,7 +5,8 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY server.py simpati_license_gate.py ./
+COPY server.py simpati_license_gate.py simpati_admin.py simpati_admin_pages.py simpati_admin_routes.py ./
+COPY static ./static
 
 ENV PYTHONUNBUFFERED=1
 
